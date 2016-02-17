@@ -1,13 +1,24 @@
+//BIG TODO: PERIKSA SEMUA
+
 /* External definitions for time-shared computer model. */
 
 #include "simlib.h"               /* Required for use of simlib.c. */
 
 #define EVENT_ARRIVAL          1  /* Event type for arrival of job to CPU. */
-#define EVENT_END_CPU_RUN      2  /* Event type for end of a CPU run. */
-#define EVENT_END_SIMULATION   3  /* Event type for end of the simulation. */
-#define LIST_QUEUE             1  /* List number for CPU queue. */
-#define LIST_CPU               2  /* List number for CPU. */
-#define SAMPST_RESPONSE_TIMES  1  /* sampst variable for response times. */
+#define EVENT_END_CPU_1_RUN    2  /* Event type for end of a CPU run. */
+#define EVENT_END_CPU_2_RUN    3  /* Event type for end of a CPU run. */
+#define EVENT_END_CPU_3_RUN    4  /* Event type for end of a CPU run. */
+#define EVENT_END_SIMULATION   5  /* Event type for end of the simulation. */
+#define LIST_QUEUE_1           1  /* List number for CPU queue. */
+#define LIST_QUEUE_2           2  /* List number for CPU queue. */
+#define LIST_QUEUE_3           3  /* List number for CPU queue. */
+#define LIST_CPU_1             4  /* List number for CPU. */
+#define LIST_CPU_2             5  /* List number for CPU. */
+#define LIST_CPU_3             6  /* List number for CPU. */
+#define SAMPST_RESPONSE_TIMES_1 1
+#define SAMPST_RESPONSE_TIMES_2 2
+#define SAMPST_RESPONSE_TIMES_3 3
+#define SAMPST_RESPONSE_TIMES  4  /* sampst variable for response times. */
 #define STREAM_THINK           1  /* Random-number stream for think times. */
 #define STREAM_SERVICE         2  /* Random-number stream for service times. */
 
@@ -15,14 +26,17 @@
 
 int   min_terms, max_terms, incr_terms, num_terms, num_responses,
       num_responses_required, term;
+//bagi2 job. TODO ganti sama input
+int batasatasjob1 = 10;
+int batasatasjob2 = 40;
 float mean_think, mean_service, quantum, swap;
 FILE  *infile, *outfile;
 
 /* Declare non-simlib functions. */
 
 void arrive(void);
-void start_CPU_run(void);
-void end_CPU_run(void);
+void start_CPU_run(int jenis_job_queue);
+void end_CPU_run(int list_cpu_num);
 void report(void);
 
 
@@ -30,8 +44,8 @@ int main()  /* Main function. */
 {
     /* Open input and output files. */
 
-    infile  = fopen("tscomp.in",  "r");
-    outfile = fopen("tscomp.out", "w");
+    infile  = fopen("tscomp-tugas.in",  "r");
+    outfile = fopen("tscomp-tugas.out", "w");
 
     /* Read input parameters. */
 
@@ -51,8 +65,8 @@ int main()  /* Main function. */
     fprintf(outfile, "Number of jobs processed%12d\n\n\n",
             num_responses_required);
     fprintf(outfile, "Number of      Average         Average");
-    fprintf(outfile, "       Utilization\n");
-    fprintf(outfile, "terminals   response time  number in queue     of CPU");
+    fprintf(outfile, "       Utilization      CPU-num/\n");
+    fprintf(outfile, "terminals   response time  number in queue     of CPU          JOB-type");
 
     /* Run the simulation varying the number of terminals. */
 
@@ -91,8 +105,14 @@ int main()  /* Main function. */
                 case EVENT_ARRIVAL:
                     arrive();
                     break;
-                case EVENT_END_CPU_RUN:
-                    end_CPU_run();
+                case EVENT_END_CPU_1_RUN:
+                    end_CPU_run(LIST_CPU_1);
+                    break;
+                case EVENT_END_CPU_2_RUN:
+                    end_CPU_run(LIST_CPU_2);
+                    break;
+                case EVENT_END_CPU_3_RUN:
+                    end_CPU_run(LIST_CPU_3);
                     break;
                 case EVENT_END_SIMULATION:
                     report();
@@ -112,7 +132,6 @@ int main()  /* Main function. */
     return 0;
 }
 
-
 void arrive(void)  /* Event function for arrival of job at CPU after think
                       time. */
 {
@@ -121,26 +140,45 @@ void arrive(void)  /* Event function for arrival of job at CPU after think
        Note that the following attributes are stored for each job record:
             1. Time of arrival to the computer.
             2. The (remaining) CPU service time required (here equal to the
-               total service time since the job is just arriving). */
+               total service time since the job is just arriving).*/
 
     transfer[1] = sim_time;
-    transfer[2] = expon(mean_service, STREAM_SERVICE);
-    list_file(LAST, LIST_QUEUE);
+    transfer[2] = expon(mean_service, STREAM_SERVICE);//TODO nanti ganti sama distribusi yang disebut di spek (belum jelas)
+    //jenis job
+    int jenis_job;
+    if (transfer[2]<=batasatasjob1)
+        jenis_job=LIST_QUEUE_1;
+    else if (transfer[2]<=batasatasjob2)
+        jenis_job=LIST_QUEUE_2;
+    else
+        jenis_job=LIST_QUEUE_3;
+    list_file(LAST, jenis_job); 
 
     /* If the CPU is idle, start a CPU run. */
-
-    if (list_size[LIST_CPU] == 0)
-        start_CPU_run();
+    switch(jenis_job){
+        case LIST_QUEUE_1:
+        if (list_size[LIST_CPU_1] == 0)
+            start_CPU_run(jenis_job);
+        break;
+        case LIST_QUEUE_2:
+        if (list_size[LIST_CPU_2] == 0)
+            start_CPU_run(jenis_job);
+        break;
+        case LIST_QUEUE_3:
+        if (list_size[LIST_CPU_3] == 0)
+            start_CPU_run(jenis_job);
+        break;
+    }
 }
 
 
-void start_CPU_run(void)  /* Non-event function to start a CPU run of a job. */
+void start_CPU_run(int jenis_job_queue)  /* Non-event function to start a CPU run of a job. */
 {
     float run_time;
 
     /* Remove the first job from the queue. */
 
-    list_remove(FIRST, LIST_QUEUE);
+    list_remove(FIRST, jenis_job_queue);
 
     /* Determine the CPU time for this pass, including the swap time. */
 
@@ -158,19 +196,45 @@ void start_CPU_run(void)  /* Non-event function to start a CPU run of a job. */
 
     /* Place the job into the CPU. */
 
-    list_file(FIRST, LIST_CPU);
-
     /* Schedule the end of the CPU run. */
+    switch(jenis_job_queue){
+        case LIST_QUEUE_1:
+            list_file(FIRST, LIST_CPU_1);
 
-    event_schedule(sim_time + run_time, EVENT_END_CPU_RUN);
+	    event_schedule(sim_time + run_time, EVENT_END_CPU_1_RUN);
+        break;
+        case LIST_QUEUE_2:
+            list_file(FIRST, LIST_CPU_2);
+
+	    event_schedule(sim_time + run_time, EVENT_END_CPU_2_RUN);
+        break;
+        case LIST_QUEUE_3:
+            list_file(FIRST, LIST_CPU_3);
+
+	    event_schedule(sim_time + run_time, EVENT_END_CPU_3_RUN);
+        break;
+    }
 }
 
 
-void end_CPU_run(void)  /* Event function to end a CPU run of a job. */
+void end_CPU_run(int list_cpu_num)  /* Event function to end a CPU run of a job. */
 {
     /* Remove the job from the CPU. */
 
-    list_remove(FIRST, LIST_CPU);
+    list_remove(FIRST, list_cpu_num);
+
+    int jenis_job_queue;
+    switch (list_cpu_num){
+    case LIST_CPU_1:
+        jenis_job_queue=LIST_QUEUE_1;
+    break;
+    case LIST_CPU_2:
+        jenis_job_queue=LIST_QUEUE_2;
+    break;
+    case LIST_CPU_3:
+        jenis_job_queue=LIST_QUEUE_3;
+    break;
+    }
 
     /* Check to see whether this job requires more CPU time. */
 
@@ -179,8 +243,8 @@ void end_CPU_run(void)  /* Event function to end a CPU run of a job. */
         /* This job requires more CPU time, so place it at the end of the queue
            and start the first job in the queue. */
 
-        list_file(LAST, LIST_QUEUE);
-        start_CPU_run();
+        list_file(LAST, jenis_job_queue);
+        start_CPU_run(jenis_job_queue);
     }
 
     else {
@@ -189,10 +253,22 @@ void end_CPU_run(void)  /* Event function to end a CPU run of a job. */
            back to its terminal, i.e., schedule another arrival from the same
            terminal. */
 
-        sampst(sim_time - transfer[1], SAMPST_RESPONSE_TIMES);
+        sampst(sim_time - transfer[1], SAMPST_RESPONSE_TIMES);//TODO nanti hapus
+        switch(jenis_job_queue){
+        case (LIST_QUEUE_1):
+            sampst(sim_time - transfer[1], SAMPST_RESPONSE_TIMES_1);
+        break;
+        case (LIST_QUEUE_2):
+            sampst(sim_time - transfer[1], SAMPST_RESPONSE_TIMES_2);
+        break;
+        case (LIST_QUEUE_3):
+            sampst(sim_time - transfer[1], SAMPST_RESPONSE_TIMES_3);
+        break;
+        }
+	
 
         event_schedule(sim_time + expon(mean_think, STREAM_THINK),
-                       EVENT_ARRIVAL);
+                       EVENT_ARRIVAL); //TODO nanti ganti sama distribusi yang disebut di spek (belum jelas)
 
         /* Increment the number of completed jobs. */
 
@@ -212,8 +288,8 @@ void end_CPU_run(void)  /* Event function to end a CPU run of a job. */
             /* Not enough jobs are done; if the queue is not empty, start
                another job. */
 
-            if (list_size[LIST_QUEUE] > 0)
-                start_CPU_run();
+            if (list_size[jenis_job_queue] > 0)
+                start_CPU_run(jenis_job_queue);
     }
 }
 
@@ -222,8 +298,14 @@ void report(void)  /* Report generator function. */
 {
     /* Get and write out estimates of desired measures of performance. */
 
-    fprintf(outfile, "\n\n%5d%16.3f%16.3f%16.3f", num_terms,
-            sampst(0.0, -SAMPST_RESPONSE_TIMES), filest(LIST_QUEUE),
-            filest(LIST_CPU));
+    fprintf(outfile, "\n\n%5d%16.3f%16.3f%16.3f         CPU-1", num_terms,
+            sampst(0.0, -SAMPST_RESPONSE_TIMES_1), filest(LIST_QUEUE_1),
+            filest(LIST_CPU_1));
+    fprintf(outfile, "\n     %16.3f%16.3f%16.3f         CPU-2", 
+            sampst(0.0, -SAMPST_RESPONSE_TIMES_2), filest(LIST_QUEUE_2),
+            filest(LIST_CPU_2));
+    fprintf(outfile, "\n     %16.3f%16.3f%16.3f         CPU-3\n", 
+            sampst(0.0, -SAMPST_RESPONSE_TIMES_3), filest(LIST_QUEUE_3),
+            filest(LIST_CPU_3));
 }
 
