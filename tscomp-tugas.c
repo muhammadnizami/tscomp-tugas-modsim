@@ -26,9 +26,9 @@
 
 int   min_terms, max_terms, incr_terms, num_terms, num_responses,
       num_responses_required, term;
-//bagi2 job. TODO ganti sama input
-int batasatasjob1 = 10;
-int batasatasjob2 = 40;
+//bagi2 job
+int batasatasjob1;
+int batasatasjob2;
 float mean_think, mean_service, quantum, swap;
 FILE  *infile, *outfile;
 
@@ -42,6 +42,11 @@ void report(void);
 
 int main()  /* Main function. */
 {
+    printf("Masukkan batas atas job 1: \n");
+    scanf("%d", &batasatasjob1);
+    printf("\n\nMasukkan batas atas job 2: \n");
+    scanf("%d", &batasatasjob2);
+
     /* Open input and output files. */
 
     infile  = fopen("tscomp-tugas.in",  "r");
@@ -128,6 +133,8 @@ int main()  /* Main function. */
 
     fclose(infile);
     fclose(outfile);
+
+    printf("\n\nOutput hasil eksekusi program dapat dilihat pada tscomp-tugas.out\n");
 
     return 0;
 }
