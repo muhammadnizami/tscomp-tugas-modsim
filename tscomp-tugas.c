@@ -42,9 +42,9 @@ void report(void);
 
 int main()  /* Main function. */
 {
-    printf("Masukkan batas atas job 1: \n");
+    printf("Masukkan batas atas job 1 (default: 10): \n");
     scanf("%d", &batasatasjob1);
-    printf("\n\nMasukkan batas atas job 2: \n");
+    printf("\n\nMasukkan batas atas job 2 (default: 40): \n");
     scanf("%d", &batasatasjob2);
 
     /* Open input and output files. */
